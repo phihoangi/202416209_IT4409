@@ -1,0 +1,89 @@
+# =============================================================
+# .gitignore — R1 (ADR-0001: TypeScript + Next.js + pnpm + Drizzle
+# + PostgreSQL + Vitest + Playwright + Docker Compose)
+# =============================================================
+
+# ---------- SECRETS (ADR-0003) — KHÔNG BAO GIỜ COMMIT ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+deploy/secrets/
+
+# ---------- DỮ LIỆU THẬT / DUMP (INV-3.7, D-08) ----------
+# R1 chỉ dùng dữ liệu tổng hợp. Mọi dữ liệu thật, dump DB, backup đều bị loại.
+data/real/
+data/private/
+*.dump
+*.sql.gz
+*.backup
+backups/
+# Export ứng viên sinh ra khi chạy thử (S15)
+exports/
+*.export.csv
+*.export.json
+
+# ---------- Node / pnpm ----------
+node_modules/
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------- Next.js / build ----------
+.next/
+out/
+build/
+dist/
+next-env.d.ts
+*.tsbuildinfo
+.vercel/
+
+# ---------- Test ----------
+coverage/
+.vitest-cache/
+# Playwright (ADR-0001: chỉ devDependency, chỉ chạy với app local)
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+.agents/
+UI_template/
+# ---------- Eval LLM tạm (ADR-0002) ----------
+# Báo cáo eval chính thức nằm ở docs/ai/eval/reports/ và ĐƯỢC commit.
+.eval-cache/
+eval-output/
+
+# ---------- Docker / hạ tầng local ----------
+docker-compose.override.yml
+.docker-data/
+pgdata/
+
+# ---------- Log ----------
+logs/
+*.log
+
+# ---------- Công cụ AI agent (cấu hình cá nhân) ----------
+.claude/settings.local.json
+.claude/worktrees/
+# Worktree git tạo ngoài cây chính (working-agreement §5)
+.worktrees/
+
+# ---------- Editor / OS ----------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*~
+
+
+report/
+.agents/
