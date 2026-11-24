@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quản lý người dùng - React CRUD</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="./style.css" />
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const EMPTY_USER = {
+      name: "",
+      username: "",
+      email: "",
+      address: { street: "", suite: "", city: "" },
+      phone: "",
+      website: ""
+    };
+
+    const ADDRESS_FIELDS = ["street", "suite", "city"];
+
+    function useEscapeKey(isActive, onEscape) {
+      React.useEffect(() => {
+        if (!isActive) return;
+        const handleKeyDown = (e) => {
+          if (e.key === "Escape") onEscape();
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+      }, [isActive, onEscape]);
+    }
+
+    function cloneUser(user) {
+      const address = user && user.address ? user.address : {};
+      return {
+        ...EMPTY_USER,
+        ...user,
+        address: {
+          street: address.street || "",
+          suite: address.suite || "",
+          city: address.city || ""
+        }
+      };
+    }
+
+    function formatAddress(address) {
+      if (!address) return "—";
+      const parts = [address.street, address.suite, address.city]
+        .map((part) => (part ? part.trim() : ""))
+        .filter(Boolean);
+      return parts.length > 0 ? parts.join(", ") : "—";
+    }
+
+    function UserFormFields({ prefix, values, onFieldChange }) {
+      const makeId = (field) => `${prefix}-${field}`;
+      const address = values.address || EMPTY_USER.address;
+
+      return (
+        <div className="form-grid">
+          <div className="form-field">
+            <label htmlFor={makeId("name")}>
+              Name <span className="required-mark">*</span>
+            </label>
+            <input
+              id={makeId("name")}
+              type="text"
+              placeholder="Leanne Graham"
+              autoFocus
+              value={values.name}
+              onChange={(e) => onFieldChange("name", e.target.value)}
+            />
+          </div>
+
+          <div className="form-field">
+            <label htmlFor={makeId("username")}>
+              Username <span className="required-mark">*</span>
+            </label>
+            <input
+              id={makeId("username")}
+              type="text"
+              placeholder="Bret"
+              value={values.username}
+              onChange={(e) => onFieldChange("username", e.target.value)}
+            />
+          </div>
+
+          <div className="form-field">
+            <label htmlFor={makeId("email")}>Email</label>
+            <input
+              id={makeId("email")}
+              type="email"
+              placeholder="Sincere@april.biz"
+              value={values.email}
+              onChange={(e) => onFieldChange("email", e.target.value)}
+            />
+          </div>
+
+          <div className="form-field">
+            <label htmlFor={makeId("phone")}>Phone</label>
+            <input
+              id={makeId("phone")}
+              type="text"
+              placeholder="1-770-736-8031"
+              value={values.phone}
+              onChange={(e) => onFieldChange("phone", e.target.value)}
+            />
+          </div>
+
+          <div className="form-field form-field-full">
+            <label htmlFor={makeId("website")}>Website</label>
+            <input
+              id={makeId("website")}
+              type="text"
+              placeholder="hildegard.org"
+              value={values.website}
+              onChange={(e) => onFieldChange("website", e.target.value)}
+            />
+          </div>
+
+          <div className="form-section-label">Địa chỉ</div>
+
+          <div className="form-field form-field-full">
+            <label htmlFor={makeId("street")}>Street</label>
+            <input
+              id={makeId("street")}
+              type="text"
+              placeholder="Kulas Light"
+              value={address.street}
+              onChange={(e) => onFieldChange("street", e.target.value)}
+            />
+          </div>
+
+          <div className="form-field">
+            <label htmlFor={makeId("suite")}>Suite</label>
+            <input
+              id={makeId("suite")}
+              type="text"
+              placeholder="Apt. 556"
+              value={address.suite}
+              onChange={(e) => onFieldChange("suite", e.target.value)}
+            />
+          </div>
+
+          <div className="form-field">
+            <label htmlFor={makeId("city")}>City</label>
+            <input
+              id={makeId("city")}
+              type="text"
+              placeholder="Gwenborough"
+              value={address.city}
+              onChange={(e) => onFieldChange("city", e.target.value)}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    function SearchForm({ onChangeValue }) {
+      return (
+        <div className="search-box">
+          <label htmlFor="search-user" className="sr-only">
+            Tìm kiếm người dùng
+          </label>
+          <input
+            id="search-user"
+            className="search-input"
+            type="text"
+            placeholder="Tìm theo name, username"
+            onChange={(e) => onChangeValue(e.target.value)}
+          />
+        </div>
+      );
+    }
+
+    function AddUser({ onAdd }) {
+      const [adding, setAdding] = React.useState(false);
+      const [user, setUser] = React.useState(() => cloneUser(EMPTY_USER));
+      const [errorMsg, setErrorMsg] = React.useState("");
+
+      const handleChange = (field, value) => {
+        if (errorMsg) setErrorMsg("");
+        if (ADDRESS_FIELDS.includes(field)) {
+          setUser((prev) => ({
+            ...prev,
+            address: { ...prev.address, [field]: value }
+          }));
+        } else {
+          setUser((prev) => ({ ...prev, [field]: value }));
+        }
+      };
+
+      const closeModal = React.useCallback(() => {
+        setAdding(false);
+        setErrorMsg("");
+        setUser(cloneUser(EMPTY_USER));
+      }, []);
+
+      useEscapeKey(adding, closeModal);
+
+      const handleAdd = (e) => {
+        e.preventDefault();
+        if (user.name.trim() === "" || user.username.trim() === "") {
+          setErrorMsg("Vui lòng nhập Name và Username!");
+          return;
+        }
+        onAdd({
+          ...user,
+          name: user.name.trim(),
+          username: user.username.trim(),
+          email: user.email.trim(),
+          phone: user.phone.trim(),
+          website: user.website.trim(),
+          address: {
+            street: user.address.street.trim(),
+            suite: user.address.suite.trim(),
+            city: user.address.city.trim()
+          }
+        });
+        closeModal();
+      };
+
+      return (
+        <div>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setAdding(true)}
+          >
+            + Thêm người dùng
+          </button>
+
+          {adding && (
+            <div
+              className="modal-overlay"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="add-modal-title"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) closeModal();
+              }}
+            >
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h4 id="add-modal-title">Thêm người dùng</h4>
+                  <button
+                    type="button"
+                    className="modal-close"
+                    aria-label="Đóng"
+                    onClick={closeModal}
+                  >
+                    &times;
+                  </button>
+                </div>
+
+                <form onSubmit={handleAdd}>
+                  <UserFormFields
+                    prefix="add"
+                    values={user}
+                    onFieldChange={handleChange}
+                  />
+
+                  {errorMsg && <p className="form-error">{errorMsg}</p>}
+
+                  <div className="modal-actions">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={closeModal}
+                    >
+                      Hủy
+                    </button>
+                    <button type="submit" className="btn btn-primary">
+                      Thêm
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function ResultTable({ keyword, user, onAdded }) {
+      const [users, setUsers] = React.useState([]);
+      const [loading, setLoading] = React.useState(true);
+      const [fetchError, setFetchError] = React.useState("");
+      const [editing, setEditing] = React.useState(null);
+      const [editError, setEditError] = React.useState("");
+
+      const closeEditModal = React.useCallback(() => {
+        setEditing(null);
+        setEditError("");
+      }, []);
+
+      useEscapeKey(Boolean(editing), closeEditModal);
+
+      React.useEffect(() => {
+        let isMounted = true;
+        fetch("https://jsonplaceholder.typicode.com/users")
+          .then((res) => {
+            if (!res.ok) throw new Error("Không thể tải danh sách người dùng.");
+            return res.json();
+          })
+          .then((data) => {
+            if (isMounted) {
+              setUsers(data);
+              setLoading(false);
+            }
+          })
+          .catch((err) => {
+            if (isMounted) {
+              setFetchError(err.message || "Lỗi kết nối máy chủ.");
+              setLoading(false);
+            }
+          });
+        return () => {
+          isMounted = false;
+        };
+      }, []);
+
+      React.useEffect(() => {
+        if (user) {
+          setUsers((prev) => {
+            const nextId =
+              prev.length > 0 ? Math.max(...prev.map((item) => item.id)) + 1 : 1;
+            return [...prev, { ...user, id: nextId }];
+          });
+          onAdded();
+        }
+      }, [user, onAdded]);
+
+      function editUser(targetUser) {
+        setEditError("");
+        setEditing(cloneUser(targetUser));
+      }
+
+      function handleEditChange(field, value) {
+        if (editError) setEditError("");
+        setEditing((prev) => {
+          if (!prev) return prev;
+          if (ADDRESS_FIELDS.includes(field)) {
+            return {
+              ...prev,
+              address: { ...prev.address, [field]: value }
+            };
+          }
+          return { ...prev, [field]: value };
+        });
+      }
+
+      function saveUser(e) {
+        e.preventDefault();
+        if (!editing) return;
+        if (editing.name.trim() === "" || editing.username.trim() === "") {
+          setEditError("Vui lòng nhập Name và Username!");
+          return;
+        }
+        const cleanedUser = {
+          ...editing,
+          name: editing.name.trim(),
+          username: editing.username.trim(),
+          email: editing.email.trim(),
+          phone: editing.phone.trim(),
+          website: editing.website.trim(),
+          address: {
+            street: editing.address.street.trim(),
+            suite: editing.address.suite.trim(),
+            city: editing.address.city.trim()
+          }
+        };
+        setUsers((prev) =>
+          prev.map((u) => (u.id === cleanedUser.id ? cleanedUser : u))
+        );
+        setEditing(null);
+        setEditError("");
+      }
+
+      function removeUser(id) {
+        setUsers((prev) => prev.filter((u) => u.id !== id));
+      }
+
+      const normalizedKeyword = keyword.trim().toLowerCase();
+      const filteredUsers = users.filter((u) => {
+        if (!normalizedKeyword) return true;
+        return (
+          (u.name || "").toLowerCase().includes(normalizedKeyword) ||
+          (u.username || "").toLowerCase().includes(normalizedKeyword)
+        );
+      });
+
+      return (
+        <section className="table-card" aria-label="Danh sách người dùng">
+          <div className="table-meta">
+            <span>Danh sách người dùng</span>
+            <span className="table-count">
+              {loading
+                ? "Đang tải..."
+                : `${filteredUsers.length} / ${users.length} bản ghi`}
+            </span>
+          </div>
+
+          {fetchError ? (
+            <div className="state-box state-error">
+              <strong>Đã xảy ra lỗi</strong>
+              <span>{fetchError}</span>
+            </div>
+          ) : loading ? (
+            <div className="table-scroll">
+              <table className="user-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Họ tên</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Địa chỉ</th>
+                    <th>Số điện thoại</th>
+                    <th>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[1, 2, 3, 4, 5].map((row) => (
+                    <tr key={row}>
+                      <td><div className="skeleton-line" style={{ width: "24px" }} /></td>
+                      <td><div className="skeleton-line" style={{ width: "140px" }} /></td>
+                      <td><div className="skeleton-line" style={{ width: "90px" }} /></td>
+                      <td><div className="skeleton-line" style={{ width: "160px" }} /></td>
+                      <td><div className="skeleton-line" style={{ width: "200px" }} /></td>
+                      <td><div className="skeleton-line" style={{ width: "110px" }} /></td>
+                      <td><div className="skeleton-line" style={{ width: "96px" }} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="state-box">
+              <strong>Không tìm thấy người dùng</strong>
+              <span>
+                {normalizedKeyword
+                  ? `Không có kết quả nào khớp với "${keyword}".`
+                  : "Danh sách hiện đang trống."}
+              </span>
+            </div>
+          ) : (
+            <div className="table-scroll">
+              <table className="user-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Họ tên</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Địa chỉ</th>
+                    <th>Số điện thoại</th>
+                    <th>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((u) => (
+                    <tr key={u.id}>
+                      <td className="cell-id">{u.id}</td>
+                      <td className="cell-name">{u.name}</td>
+                      <td className="cell-username">{u.username}</td>
+                      <td>{u.email || "—"}</td>
+                      <td>{formatAddress(u.address)}</td>
+                      <td>{u.phone || "—"}</td>
+                      <td className="cell-actions">
+                        <div className="action-group">
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => editUser(u)}
+                          >
+                            Sửa
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-delete"
+                            onClick={() => removeUser(u.id)}
+                          >
+                            Xóa
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {editing && (
+            <div
+              className="modal-overlay"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="edit-modal-title"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  setEditing(null);
+                  setEditError("");
+                }
+              }}
+            >
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h4 id="edit-modal-title">Sửa người dùng #{editing.id}</h4>
+                  <button
+                    type="button"
+                    className="modal-close"
+                    aria-label="Đóng"
+                    onClick={() => {
+                      setEditing(null);
+                      setEditError("");
+                    }}
+                  >
+                    &times;
+                  </button>
+                </div>
+
+                <form onSubmit={saveUser}>
+                  <UserFormFields
+                    prefix="edit"
+                    values={editing}
+                    onFieldChange={handleEditChange}
+                  />
+
+                  {editError && <p className="form-error">{editError}</p>}
+
+                  <div className="modal-actions">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        setEditing(null);
+                        setEditError("");
+                      }}
+                    >
+                      Hủy
+                    </button>
+                    <button type="submit" className="btn btn-primary">
+                      Lưu
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </section>
+      );
+    }
+
+    function App() {
+      const [kw, setKeyword] = React.useState("");
+      const [newUser, setNewUser] = React.useState(null);
+
+      const handleAdded = React.useCallback(() => {
+        setNewUser(null);
+      }, []);
+
+      return (
+        <main className="app-shell">
+          <header className="app-header">
+            <div className="app-title-group">
+              <h1>Quản lý người dùng</h1>
+            </div>
+          </header>
+
+          <div className="toolbar">
+            <SearchForm onChangeValue={setKeyword} />
+            <AddUser onAdd={setNewUser} />
+          </div>
+
+          <ResultTable
+            keyword={kw}
+            user={newUser}
+            onAdded={handleAdded}
+          />
+        </main>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
